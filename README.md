@@ -24,6 +24,7 @@ Sau đó truy cập `http://localhost:8080`.
 - Lọc theo chủ đề và cấp độ
 - Đánh dấu từ đã lưu, trạng thái đã nhớ/hơi khó/học lại
 - Bài luyện viết nghĩa Việt → từ Anh, công bố kết quả và điểm thang 10 sau khi hoàn thành
+- Bài luyện phát âm có giọng mẫu, thu âm qua microphone và chấm mức độ nhận diện từ 1–100%
 - Chọn bài 10, 20, 30, 50 hoặc 100 từ; luyện riêng từ đã lưu hoặc từ từng trả lời sai
 - Xáo bài, học lại và học riêng bộ từ đang lọc
 - Mục tiêu ngày, chuỗi ngày học và lưu tiến độ bằng localStorage

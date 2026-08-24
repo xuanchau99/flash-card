@@ -38,6 +38,10 @@
           <span>Luyện viết từ</span>
           <span class="nav-count" id="navWrong">0</span>
         </button>
+        <button class="nav-item" data-view="pronunciation">
+          <svg aria-hidden="true"><use href="#icon-mic"></use></svg>
+          <span>Luyện phát âm</span>
+        </button>
         <button class="nav-item" data-view="saved">
           <svg aria-hidden="true"><use href="#icon-bookmark"></use></svg>
           <span>Đã lưu</span>
@@ -341,6 +345,119 @@
         </div>
       </section>
 
+      <section class="view" id="pronunciationView">
+        <div class="page-heading exercise-heading">
+          <div>
+            <p class="eyebrow">NGHE CHUẨN, NÓI TỰ TIN</p>
+            <h1>Luyện phát âm</h1>
+            <p>Nghe giọng mẫu, phát âm vào microphone và nhận điểm từ 1–100%.</p>
+          </div>
+          <button class="button secondary" id="exitPronunciationButton" hidden>
+            <svg aria-hidden="true"><use href="#icon-close"></use></svg> Đổi thiết lập
+          </button>
+        </div>
+
+        <div class="pronunciation-setup" id="pronunciationSetup">
+          <div class="pronunciation-intro">
+            <div class="pronunciation-hero-icon"><svg aria-hidden="true"><use href="#icon-mic"></use></svg></div>
+            <div>
+              <span class="setup-label">BÀI TẬP PHÁT ÂM</span>
+              <h2>Luyện nói từng từ thật rõ ràng</h2>
+              <p>Trình duyệt sẽ nghe và so sánh câu nhận diện được với từ mẫu.</p>
+            </div>
+          </div>
+          <div class="pronunciation-settings">
+            <div class="setup-group">
+              <label>Số lượng từ</label>
+              <div class="amount-options" id="pronunciationAmounts">
+                <button data-pronunciation-amount="5">5</button>
+                <button data-pronunciation-amount="10" class="active">10</button>
+                <button data-pronunciation-amount="20">20</button>
+              </div>
+            </div>
+            <div class="setup-group">
+              <label for="pronunciationSource">Chọn bộ từ</label>
+              <div class="exercise-select-wrap">
+                <svg aria-hidden="true"><use href="#icon-library"></use></svg>
+                <select id="pronunciationSource">
+                  <option value="curated">375 từ giao tiếp thiết yếu</option>
+                  <option value="saved">Những từ đã lưu</option>
+                  <option value="all">Toàn bộ kho từ vựng</option>
+                </select>
+                <svg aria-hidden="true"><use href="#icon-chevron"></use></svg>
+              </div>
+              <small id="pronunciationSourceNote">375 từ giao tiếp có IPA, nghĩa và câu ví dụ.</small>
+            </div>
+            <button class="button primary start-pronunciation" id="startPronunciationButton">
+              Bắt đầu luyện <svg aria-hidden="true"><use href="#icon-arrow-right"></use></svg>
+            </button>
+            <p class="pronunciation-privacy">🎙️ Trình duyệt sẽ yêu cầu quyền sử dụng microphone.</p>
+          </div>
+        </div>
+
+        <div class="pronunciation-session" id="pronunciationSession" hidden>
+          <div class="pronunciation-statusbar">
+            <div>
+              <span>TỪ <strong id="pronunciationCurrent">1</strong>/<span id="pronunciationTotal">10</span></span>
+              <div class="exercise-progress-track"><span id="pronunciationProgress"></span></div>
+            </div>
+            <div class="pronunciation-average"><small>Điểm trung bình</small><strong id="pronunciationAverage">—</strong></div>
+          </div>
+
+          <article class="pronunciation-card">
+            <span class="writing-category" id="pronunciationCategory">💬 Giao tiếp cơ bản</span>
+            <div class="pronunciation-word">
+              <small>HÃY PHÁT ÂM</small>
+              <h2 id="pronunciationWord">Hello</h2>
+              <p id="pronunciationIpa">/həˈləʊ/</p>
+              <span id="pronunciationMeaning">Xin chào</span>
+            </div>
+
+            <button class="sample-voice-button" id="pronunciationSampleButton">
+              <svg aria-hidden="true"><use href="#icon-volume"></use></svg>
+              Nghe chậm giọng mẫu
+            </button>
+
+            <div class="pronunciation-result" id="pronunciationResult" hidden>
+              <div class="pronunciation-score" id="pronunciationScore"><strong>0%</strong></div>
+              <div>
+                <strong id="pronunciationResultTitle">Hãy thử lại</strong>
+                <p id="pronunciationTranscript">Trình duyệt nghe được: —</p>
+              </div>
+            </div>
+
+            <p class="pronunciation-feedback" id="pronunciationFeedback" aria-live="polite">Nghe giọng mẫu, sau đó nhấn nút và phát âm rõ từ phía trên.</p>
+            <button class="pronunciation-record" id="pronunciationRecordButton">
+              <span><svg aria-hidden="true"><use href="#icon-mic"></use></svg></span>
+              <strong>Bắt đầu phát âm</strong>
+            </button>
+            <div class="pronunciation-actions">
+              <button class="button secondary" id="retryPronunciationButton" hidden>Thử lại</button>
+              <button class="button primary" id="nextPronunciationButton" hidden>
+                Từ tiếp theo <svg aria-hidden="true"><use href="#icon-arrow-right"></use></svg>
+              </button>
+            </div>
+          </article>
+          <p class="pronunciation-disclaimer">Điểm phản ánh mức độ trình duyệt nhận diện đúng từ/cụm từ, không thay thế đánh giá ngữ âm chuyên sâu.</p>
+        </div>
+
+        <div class="pronunciation-complete" id="pronunciationComplete" hidden>
+          <div class="complete-badge">🎙️</div>
+          <p class="eyebrow">HOÀN THÀNH BÀI PHÁT ÂM</p>
+          <h2 id="pronunciationCompleteTitle">Phát âm tốt lắm!</h2>
+          <p>Bạn đã hoàn thành toàn bộ lượt luyện.</p>
+          <div class="complete-score-grid">
+            <div class="total-score"><strong id="pronunciationCompleteAverage">0%</strong><span>Trung bình</span></div>
+            <div class="pass"><strong id="pronunciationCompleteBest">0%</strong><span>Cao nhất</span></div>
+            <div><strong id="pronunciationCompleteCount">0</strong><span>Đã luyện</span></div>
+          </div>
+          <div class="complete-actions">
+            <button class="button secondary" id="pronunciationBackToSetupButton">Đổi thiết lập</button>
+            <button class="button primary" id="restartPronunciationButton">Luyện lại</button>
+          </div>
+        </div>
+      </section>
+
       <section class="view" id="libraryView">
         <div class="page-heading library-heading">
           <div>
@@ -439,6 +556,8 @@
     <symbol id="icon-thinking" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9h.01M15 9h.01M9 15c1.7-1 4.3-1 6 0"/></symbol>
     <symbol id="icon-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
     <symbol id="icon-pen" viewBox="0 0 24 24"><path d="m4 20 4.5-1 10.8-10.8a2.2 2.2 0 0 0-3.1-3.1L5.4 15.9zM14.8 6.5l3.1 3.1M4 20h16"/></symbol>
+    <symbol id="icon-mic" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="13" rx="4"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></symbol>
+    <symbol id="icon-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
     <symbol id="icon-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
     <symbol id="icon-arrow-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
     <symbol id="icon-arrow-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>

@@ -77,6 +77,13 @@
   let exerciseDeck = [];
   let exerciseIndex = 0;
   let exerciseResults = [];
+  let pronunciationAmount = 10;
+  let pronunciationDeck = [];
+  let pronunciationIndex = 0;
+  let pronunciationScores = [];
+  let pronunciationRecognition = null;
+  let pronunciationListening = false;
+  let pronunciationStopTimer;
   let translationRequestId = 0;
 
   const elements = {
@@ -147,7 +154,29 @@
     answerInputWrap: $("#answerInputWrap"),
     checkAnswerButton: $("#checkAnswerButton"),
     skipExerciseButton: $("#skipExerciseButton"),
-    exerciseReview: $("#exerciseReview")
+    exerciseReview: $("#exerciseReview"),
+    pronunciationSetup: $("#pronunciationSetup"),
+    pronunciationSession: $("#pronunciationSession"),
+    pronunciationComplete: $("#pronunciationComplete"),
+    pronunciationSource: $("#pronunciationSource"),
+    pronunciationSourceNote: $("#pronunciationSourceNote"),
+    exitPronunciationButton: $("#exitPronunciationButton"),
+    pronunciationCurrent: $("#pronunciationCurrent"),
+    pronunciationTotal: $("#pronunciationTotal"),
+    pronunciationProgress: $("#pronunciationProgress"),
+    pronunciationAverage: $("#pronunciationAverage"),
+    pronunciationCategory: $("#pronunciationCategory"),
+    pronunciationWord: $("#pronunciationWord"),
+    pronunciationIpa: $("#pronunciationIpa"),
+    pronunciationMeaning: $("#pronunciationMeaning"),
+    pronunciationResult: $("#pronunciationResult"),
+    pronunciationScore: $("#pronunciationScore"),
+    pronunciationResultTitle: $("#pronunciationResultTitle"),
+    pronunciationTranscript: $("#pronunciationTranscript"),
+    pronunciationFeedback: $("#pronunciationFeedback"),
+    pronunciationRecordButton: $("#pronunciationRecordButton"),
+    retryPronunciationButton: $("#retryPronunciationButton"),
+    nextPronunciationButton: $("#nextPronunciationButton")
   };
 
   function saveStore() {
@@ -634,6 +663,282 @@
     updateExerciseSourceNote();
   }
 
+  function supportsSpeechRecognition() {
+    return Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
+  }
+
+  function getPronunciationPool(source = elements.pronunciationSource.value) {
+    if (source === "curated") return vocabulary.filter((item) => !item.extended);
+    if (source === "saved") return store.saved.map((id) => vocabulary.find((item) => item.id === id)).filter(Boolean);
+    return vocabulary;
+  }
+
+  function updatePronunciationSourceNote() {
+    const source = elements.pronunciationSource.value;
+    const notes = {
+      curated: "375 từ giao tiếp có IPA, nghĩa và câu ví dụ.",
+      saved: `${store.saved.length.toLocaleString("vi-VN")} từ bạn đã đánh dấu để ôn tập.`,
+      all: `${vocabulary.length.toLocaleString("vi-VN")} từ và cụm từ trong toàn bộ kho.`
+    };
+    elements.pronunciationSourceNote.textContent = supportsSpeechRecognition()
+      ? notes[source]
+      : "Trình duyệt này chưa hỗ trợ nhận diện giọng nói. Hãy dùng Chrome hoặc Edge phiên bản mới.";
+    $("#startPronunciationButton").disabled = !supportsSpeechRecognition();
+  }
+
+  function showPronunciationSetup() {
+    stopPronunciationRecognition();
+    elements.pronunciationSetup.hidden = false;
+    elements.pronunciationSession.hidden = true;
+    elements.pronunciationComplete.hidden = true;
+    elements.exitPronunciationButton.hidden = true;
+    updatePronunciationSourceNote();
+  }
+
+  function startPronunciation(overrideItems = null) {
+    if (!supportsSpeechRecognition()) {
+      showToast("Trình duyệt chưa hỗ trợ nhận diện giọng nói", "!");
+      return;
+    }
+    const pool = overrideItems || getPronunciationPool();
+    if (!pool.length) {
+      showToast(elements.pronunciationSource.value === "saved" ? "Bạn chưa lưu từ nào" : "Bộ từ này đang trống", "!");
+      return;
+    }
+    const count = overrideItems ? overrideItems.length : Math.min(pronunciationAmount, pool.length);
+    pronunciationDeck = shuffleItems(pool).slice(0, count);
+    pronunciationIndex = 0;
+    pronunciationScores = [];
+    elements.pronunciationSetup.hidden = true;
+    elements.pronunciationComplete.hidden = true;
+    elements.pronunciationSession.hidden = false;
+    elements.exitPronunciationButton.hidden = false;
+    elements.pronunciationTotal.textContent = pronunciationDeck.length;
+    renderPronunciationQuestion();
+  }
+
+  function pronunciationCard() {
+    return pronunciationDeck[pronunciationIndex];
+  }
+
+  function pronunciationAverage(includeCurrent = true) {
+    const scores = pronunciationScores.filter((score, index) => Number.isFinite(score) && (includeCurrent || index < pronunciationIndex));
+    return scores.length ? Math.round(scores.reduce((total, score) => total + score, 0) / scores.length) : null;
+  }
+
+  function renderPronunciationQuestion() {
+    const card = pronunciationCard();
+    if (!card) return;
+    const meta = categories[card.category] || categories.dictionary;
+    stopPronunciationRecognition();
+    elements.pronunciationCurrent.textContent = pronunciationIndex + 1;
+    elements.pronunciationProgress.style.width = `${(pronunciationIndex / pronunciationDeck.length) * 100}%`;
+    const average = pronunciationAverage(false);
+    elements.pronunciationAverage.textContent = average === null ? "—" : `${average}%`;
+    elements.pronunciationCategory.textContent = `${meta.emoji} ${meta.name}`;
+    elements.pronunciationWord.textContent = card.word;
+    elements.pronunciationIpa.textContent = card.ipa || "";
+    elements.pronunciationMeaning.textContent = card.meaning;
+    elements.pronunciationResult.hidden = true;
+    elements.pronunciationRecordButton.hidden = false;
+    elements.retryPronunciationButton.hidden = true;
+    elements.nextPronunciationButton.hidden = true;
+    elements.nextPronunciationButton.innerHTML = pronunciationIndex === pronunciationDeck.length - 1
+      ? `Xem kết quả <svg aria-hidden="true"><use href="#icon-arrow-right"></use></svg>`
+      : `Từ tiếp theo <svg aria-hidden="true"><use href="#icon-arrow-right"></use></svg>`;
+    elements.pronunciationFeedback.textContent = "Nghe giọng mẫu, sau đó nhấn nút và phát âm rõ từ phía trên.";
+    setPronunciationListening(false);
+  }
+
+  function normalizePronunciation(value) {
+    return String(value).normalize("NFKD").toLocaleLowerCase("en").replace(/[^a-z0-9]/g, "");
+  }
+
+  function levenshteinDistance(left, right) {
+    if (!left.length) return right.length;
+    if (!right.length) return left.length;
+    let previous = Array.from({ length: right.length + 1 }, (_, index) => index);
+    for (let leftIndex = 1; leftIndex <= left.length; leftIndex += 1) {
+      const current = [leftIndex];
+      for (let rightIndex = 1; rightIndex <= right.length; rightIndex += 1) {
+        const cost = left[leftIndex - 1] === right[rightIndex - 1] ? 0 : 1;
+        current[rightIndex] = Math.min(
+          current[rightIndex - 1] + 1,
+          previous[rightIndex] + 1,
+          previous[rightIndex - 1] + cost
+        );
+      }
+      previous = current;
+    }
+    return previous[right.length];
+  }
+
+  function calculatePronunciationScore(target, transcript, confidence = 0) {
+    const expected = normalizePronunciation(target);
+    const heard = normalizePronunciation(transcript);
+    if (!expected || !heard) return 1;
+    const distance = levenshteinDistance(expected, heard);
+    const similarity = Math.max(0, 1 - distance / Math.max(expected.length, heard.length));
+    const reliableConfidence = confidence > 0 ? confidence : similarity;
+    const score = Math.round((similarity * .88 + reliableConfidence * .12) * 100);
+    return Math.max(1, Math.min(100, similarity === 1 ? Math.max(95, score) : score));
+  }
+
+  function setPronunciationListening(listening) {
+    pronunciationListening = listening;
+    elements.pronunciationRecordButton.disabled = false;
+    elements.pronunciationRecordButton.classList.toggle("listening", listening);
+    $("use", elements.pronunciationRecordButton).setAttribute("href", listening ? "#icon-stop" : "#icon-mic");
+    $("strong", elements.pronunciationRecordButton).textContent = listening ? "Dừng và chấm điểm" : "Bắt đầu phát âm";
+  }
+
+  function stopPronunciationRecognition() {
+    clearTimeout(pronunciationStopTimer);
+    const recognition = pronunciationRecognition;
+    pronunciationRecognition = null;
+    if (recognition) {
+      try { recognition.abort(); } catch { /* Recognition may already be stopped. */ }
+    }
+    if (elements.pronunciationRecordButton) setPronunciationListening(false);
+  }
+
+  function pronunciationFeedbackForScore(score) {
+    if (score >= 90) return { title: "Xuất sắc!", message: "Phát âm được nhận diện rất sát với giọng mẫu." };
+    if (score >= 75) return { title: "Khá chuẩn!", message: "Rất gần rồi — thử nói rõ từng âm để tăng điểm." };
+    if (score >= 60) return { title: "Gần đúng", message: "Nghe lại giọng mẫu và thử chậm hơn một chút." };
+    return { title: "Hãy thử lại", message: "Trình duyệt chưa nhận ra từ rõ ràng. Hãy nói gần microphone hơn." };
+  }
+
+  function showPronunciationResult(transcript, score) {
+    const feedback = pronunciationFeedbackForScore(score);
+    pronunciationScores[pronunciationIndex] = score;
+    elements.pronunciationScore.style.setProperty("--score", `${score * 3.6}deg`);
+    elements.pronunciationScore.style.setProperty("--score-color", score >= 75 ? "var(--green)" : score >= 60 ? "var(--yellow)" : "var(--red)");
+    $("strong", elements.pronunciationScore).textContent = `${score}%`;
+    elements.pronunciationResultTitle.textContent = feedback.title;
+    elements.pronunciationTranscript.textContent = `Trình duyệt nghe được: “${transcript}”`;
+    elements.pronunciationFeedback.textContent = feedback.message;
+    elements.pronunciationResult.hidden = false;
+    elements.pronunciationRecordButton.hidden = true;
+    elements.retryPronunciationButton.hidden = false;
+    elements.nextPronunciationButton.hidden = false;
+    elements.pronunciationProgress.style.width = `${((pronunciationIndex + 1) / pronunciationDeck.length) * 100}%`;
+    elements.pronunciationAverage.textContent = `${pronunciationAverage()}%`;
+    markStudied(pronunciationCard().id);
+  }
+
+  function startPronunciationRecognition() {
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Recognition || pronunciationListening) return;
+    stopPronunciationRecognition();
+    if ("speechSynthesis" in window) speechSynthesis.cancel();
+    elements.pronunciationResult.hidden = true;
+    elements.retryPronunciationButton.hidden = true;
+    elements.nextPronunciationButton.hidden = true;
+    elements.pronunciationRecordButton.hidden = false;
+    elements.pronunciationFeedback.textContent = "Đang chuẩn bị microphone...";
+
+    const recognition = new Recognition();
+    pronunciationRecognition = recognition;
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+    recognition.continuous = false;
+    recognition.maxAlternatives = 5;
+    let receivedResult = false;
+
+    recognition.onstart = () => {
+      if (pronunciationRecognition !== recognition) return;
+      setPronunciationListening(true);
+      elements.pronunciationFeedback.textContent = "Đang nghe — hãy phát âm, sau đó nhấn “Dừng và chấm điểm”.";
+      clearTimeout(pronunciationStopTimer);
+      pronunciationStopTimer = setTimeout(() => {
+        if (pronunciationRecognition === recognition && pronunciationListening) recognition.stop();
+      }, 8000);
+    };
+    recognition.onresult = (event) => {
+      if (pronunciationRecognition !== recognition) return;
+      receivedResult = true;
+      const alternatives = Array.from(event.results[0]);
+      const best = alternatives.map((alternative) => ({
+        transcript: alternative.transcript.trim(),
+        score: calculatePronunciationScore(pronunciationCard().word, alternative.transcript, alternative.confidence)
+      })).sort((left, right) => right.score - left.score)[0];
+      showPronunciationResult(best.transcript, best.score);
+    };
+    recognition.onerror = (event) => {
+      if (pronunciationRecognition !== recognition || event.error === "aborted") return;
+      const messages = {
+        "not-allowed": "Bạn cần cho phép trình duyệt sử dụng microphone.",
+        "audio-capture": "Không tìm thấy microphone đang hoạt động.",
+        "no-speech": "Chưa nghe thấy giọng nói. Hãy nhấn và thử lại.",
+        network: "Dịch vụ nhận diện giọng nói đang mất kết nối."
+      };
+      elements.pronunciationFeedback.textContent = messages[event.error] || "Không nhận diện được giọng nói. Hãy thử lại.";
+      showToast(elements.pronunciationFeedback.textContent, "!");
+    };
+    recognition.onend = () => {
+      if (pronunciationRecognition !== recognition) return;
+      clearTimeout(pronunciationStopTimer);
+      pronunciationRecognition = null;
+      setPronunciationListening(false);
+      if (!receivedResult && (elements.pronunciationFeedback.textContent.includes("Đang nghe") || elements.pronunciationFeedback.textContent.includes("Đã dừng thu"))) {
+        elements.pronunciationFeedback.textContent = "Chưa nghe thấy giọng nói. Hãy nhấn và thử lại.";
+      }
+    };
+
+    try {
+      recognition.start();
+    } catch {
+      stopPronunciationRecognition();
+      elements.pronunciationFeedback.textContent = "Microphone đang bận. Hãy chờ một chút rồi thử lại.";
+    }
+  }
+
+  function togglePronunciationRecording() {
+    if (!pronunciationListening || !pronunciationRecognition) {
+      startPronunciationRecognition();
+      return;
+    }
+    clearTimeout(pronunciationStopTimer);
+    elements.pronunciationRecordButton.disabled = true;
+    $("strong", elements.pronunciationRecordButton).textContent = "Đang chấm điểm...";
+    elements.pronunciationFeedback.textContent = "Đã dừng thu — đang xử lý giọng nói...";
+    try {
+      pronunciationRecognition.stop();
+    } catch {
+      stopPronunciationRecognition();
+    }
+  }
+
+  function retryPronunciation() {
+    pronunciationScores[pronunciationIndex] = undefined;
+    startPronunciationRecognition();
+  }
+
+  function nextPronunciationQuestion() {
+    if (!Number.isFinite(pronunciationScores[pronunciationIndex])) return;
+    if (pronunciationIndex >= pronunciationDeck.length - 1) {
+      finishPronunciation();
+      return;
+    }
+    pronunciationIndex += 1;
+    renderPronunciationQuestion();
+  }
+
+  function finishPronunciation() {
+    stopPronunciationRecognition();
+    const scores = pronunciationScores.filter(Number.isFinite);
+    const average = Math.round(scores.reduce((total, score) => total + score, 0) / scores.length);
+    const best = Math.max(...scores);
+    elements.pronunciationSession.hidden = true;
+    elements.pronunciationComplete.hidden = false;
+    elements.exitPronunciationButton.hidden = true;
+    $("#pronunciationCompleteAverage").textContent = `${average}%`;
+    $("#pronunciationCompleteBest").textContent = `${best}%`;
+    $("#pronunciationCompleteCount").textContent = scores.length;
+    $("#pronunciationCompleteTitle").textContent = average >= 90 ? "Phát âm xuất sắc!" : average >= 75 ? "Phát âm tốt lắm!" : average >= 60 ? "Bạn đang tiến bộ!" : "Hãy luyện thêm nhé!";
+  }
+
   function renderLibrary() {
     const filtered = getFilteredVocabulary();
     elements.resultCount.textContent = filtered.length;
@@ -650,12 +955,14 @@
   }
 
   function showView(viewName) {
+    if (activeView === "pronunciation" && viewName !== "pronunciation") stopPronunciationRecognition();
     activeView = viewName;
     $$(".view").forEach((view) => view.classList.toggle("active", view.id === `${viewName}View`));
     $$(".nav-item").forEach((button) => button.classList.toggle("active", button.dataset.view === viewName));
     if (viewName === "library") renderLibrary();
     if (viewName === "saved") renderSaved();
     if (viewName === "exercise" && elements.exerciseSession.hidden && elements.exerciseComplete.hidden) showExerciseSetup();
+    if (viewName === "pronunciation" && elements.pronunciationSession.hidden && elements.pronunciationComplete.hidden) showPronunciationSetup();
     window.scrollTo({ top: 0, behavior: "smooth" });
     closeMobileMenu();
   }
@@ -792,6 +1099,25 @@
       startExercise(failedItems);
     });
 
+    $("#pronunciationAmounts").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-pronunciation-amount]");
+      if (!button) return;
+      pronunciationAmount = Number(button.dataset.pronunciationAmount);
+      $$('[data-pronunciation-amount]', $("#pronunciationAmounts")).forEach((item) => item.classList.toggle("active", item === button));
+    });
+    elements.pronunciationSource.addEventListener("change", updatePronunciationSourceNote);
+    $("#startPronunciationButton").addEventListener("click", () => startPronunciation());
+    elements.exitPronunciationButton.addEventListener("click", showPronunciationSetup);
+    $("#pronunciationSampleButton").addEventListener("click", () => {
+      stopPronunciationRecognition();
+      speakText(pronunciationCard().word.replace(/\.\.\./g, ""), "en-US", .62);
+    });
+    elements.pronunciationRecordButton.addEventListener("click", togglePronunciationRecording);
+    elements.retryPronunciationButton.addEventListener("click", retryPronunciation);
+    elements.nextPronunciationButton.addEventListener("click", nextPronunciationQuestion);
+    $("#pronunciationBackToSetupButton").addEventListener("click", showPronunciationSetup);
+    $("#restartPronunciationButton").addEventListener("click", () => startPronunciation([...pronunciationDeck]));
+
     elements.globalSearch.addEventListener("input", (event) => {
       libraryQuery = event.target.value;
       elements.librarySearch.value = libraryQuery;
@@ -854,10 +1180,11 @@
     renderLibrary();
     renderSaved();
     updateExerciseSourceNote();
+    updatePronunciationSourceNote();
     initializeEvents();
     saveStore();
     const requestedView = window.location.hash.slice(1);
-    if (["learn", "library", "exercise", "saved"].includes(requestedView)) showView(requestedView);
+    if (["learn", "library", "exercise", "pronunciation", "saved"].includes(requestedView)) showView(requestedView);
   }
 
   initialize();
