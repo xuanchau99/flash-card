@@ -117,14 +117,14 @@ kbd { min-width: 22px; padding: 3px 6px; border: 1px solid var(--line); border-b
 .session-progress strong { color: var(--text); }
 .mini-progress { width: 100px; height: 5px; border-radius: 6px; background: var(--line); overflow: hidden; }
 .mini-progress span { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--green); transition: width .3s ease; }
-.flashcard-scene { height: 405px; perspective: 1200px; cursor: pointer; border-radius: var(--radius); }
-.flashcard { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .65s cubic-bezier(.2,.75,.25,1); }
-.flashcard.flipped { transform: rotateY(180deg); }
-.card-face { position: absolute; inset: 0; display: flex; flex-direction: column; padding: 25px 28px 20px; border-radius: var(--radius); backface-visibility: hidden; overflow: hidden; box-shadow: var(--shadow); }
-.card-front { background: var(--surface); border: 1px solid rgba(222,221,212,.75); }
+.flashcard-scene { height: 405px; -webkit-perspective: 1200px; perspective: 1200px; cursor: pointer; border-radius: var(--radius); isolation: isolate; }
+.flashcard { position: relative; width: 100%; height: 100%; -webkit-transform-style: preserve-3d; transform-style: preserve-3d; transition: transform .65s cubic-bezier(.2,.75,.25,1); will-change: transform; }
+.flashcard.flipped { -webkit-transform: rotateY(180deg); transform: rotateY(180deg); }
+.card-face { position: absolute; inset: 0; display: flex; flex-direction: column; padding: 25px 28px 20px; border-radius: var(--radius); -webkit-backface-visibility: hidden; backface-visibility: hidden; overflow: hidden; box-shadow: var(--shadow); will-change: transform; }
+.card-front { -webkit-transform: rotateY(0deg) translateZ(.1px); transform: rotateY(0deg) translateZ(.1px); background: var(--surface); border: 1px solid rgba(222,221,212,.75); }
 .card-front::before { content: ""; position: absolute; width: 210px; height: 210px; right: -65px; top: -80px; border-radius: 50%; background: #f0e8d4; opacity: .55; }
 .card-front::after { content: "Aa"; position: absolute; left: -8px; bottom: 25px; color: #f1efe7; font: 700 90px Fraunces, serif; z-index: 0; }
-.card-back { transform: rotateY(180deg); color: white; background: linear-gradient(135deg, #315d4c 0%, #24483a 100%); }
+.card-back { -webkit-transform: rotateY(180deg) translateZ(.1px); transform: rotateY(180deg) translateZ(.1px); color: white; background: linear-gradient(135deg, #315d4c 0%, #24483a 100%); }
 .card-back::after { content: ""; position: absolute; width: 280px; height: 280px; right: -100px; bottom: -120px; border: 1px solid rgba(255,255,255,.1); border-radius: 50%; box-shadow: 0 0 0 35px rgba(255,255,255,.025), 0 0 0 70px rgba(255,255,255,.02); }
 .card-topline { position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; }
 .level-tag { padding: 5px 9px; border-radius: 6px; color: var(--green); background: var(--green-light); font-size: 9px; font-weight: 700; letter-spacing: .6px; }
