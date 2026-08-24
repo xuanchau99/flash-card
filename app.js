@@ -1069,6 +1069,27 @@
     $("#pronunciationCompleteTitle").textContent = average >= 90 ? "Phát âm xuất sắc!" : average >= 75 ? "Phát âm tốt lắm!" : average >= 60 ? "Bạn đang tiến bộ!" : "Hãy luyện thêm nhé!";
   }
 
+  function continuePronunciation() {
+    const sourcePool = getPronunciationPool();
+    if (!sourcePool.length) {
+      showToast("Bộ từ này đang trống", "!");
+      return;
+    }
+
+    const previousIds = new Set(pronunciationDeck.map((item) => item.id));
+    const differentItems = shuffleItems(sourcePool.filter((item) => !previousIds.has(item.id)));
+    const repeatedItems = shuffleItems(sourcePool.filter((item) => previousIds.has(item.id)));
+    const count = Math.min(pronunciationAmount, sourcePool.length);
+    const nextDeck = differentItems.slice(0, count);
+
+    if (nextDeck.length < count) {
+      nextDeck.push(...repeatedItems.slice(0, count - nextDeck.length));
+      showToast("Đã dùng hết từ mới — bổ sung một số từ vừa luyện", "↻");
+    }
+
+    startPronunciation(nextDeck);
+  }
+
   function renderLibrary() {
     const filtered = getFilteredVocabulary();
     elements.resultCount.textContent = filtered.length;
@@ -1256,6 +1277,7 @@
     elements.nextPronunciationButton.addEventListener("click", nextPronunciationQuestion);
     $("#pronunciationBackToSetupButton").addEventListener("click", showPronunciationSetup);
     $("#restartPronunciationButton").addEventListener("click", () => startPronunciation([...pronunciationDeck]));
+    $("#continuePronunciationButton").addEventListener("click", continuePronunciation);
 
     elements.globalSearch.addEventListener("input", (event) => {
       libraryQuery = event.target.value;
