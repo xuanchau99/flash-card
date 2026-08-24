@@ -29,7 +29,8 @@
     dictionaryVersion: DICTIONARY_VERSION,
     streak: 0,
     lastStudyDate: "",
-    theme: "light"
+    theme: "light",
+    microphonePermission: "prompt"
   };
 
   function loadStore() {
@@ -83,7 +84,11 @@
   let pronunciationScores = [];
   let pronunciationRecognition = null;
   let pronunciationListening = false;
+  let pronunciationInterimCandidate = null;
   let pronunciationStopTimer;
+  let pronunciationIgnoreClickUntil = 0;
+  let microphonePermissionRequest = null;
+  let microphonePermissionWatcher = null;
   let translationRequestId = 0;
 
   const elements = {
@@ -160,6 +165,7 @@
     pronunciationComplete: $("#pronunciationComplete"),
     pronunciationSource: $("#pronunciationSource"),
     pronunciationSourceNote: $("#pronunciationSourceNote"),
+    microphonePermissionStatus: $("#microphonePermissionStatus"),
     exitPronunciationButton: $("#exitPronunciationButton"),
     pronunciationCurrent: $("#pronunciationCurrent"),
     pronunciationTotal: $("#pronunciationTotal"),
@@ -667,6 +673,90 @@
     return Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
   }
 
+  function renderMicrophonePermissionStatus(state = store.microphonePermission) {
+    if (!elements.microphonePermissionStatus) return;
+    const statuses = {
+      granted: "✓ Đã ghi nhớ quyền sử dụng microphone trên thiết bị này.",
+      denied: "⚠ Microphone đang bị chặn. Hãy cho phép trong cài đặt của trang.",
+      prompt: "🎙️ Chỉ hỏi quyền microphone ở lần sử dụng đầu tiên."
+    };
+    const normalizedState = statuses[state] ? state : "prompt";
+    elements.microphonePermissionStatus.dataset.state = normalizedState;
+    elements.microphonePermissionStatus.textContent = statuses[normalizedState];
+  }
+
+  function rememberMicrophonePermission(state) {
+    const normalizedState = ["granted", "denied", "prompt"].includes(state) ? state : "prompt";
+    if (store.microphonePermission !== normalizedState) {
+      store.microphonePermission = normalizedState;
+      saveStore();
+    }
+    renderMicrophonePermissionStatus(normalizedState);
+  }
+
+  async function queryMicrophonePermission() {
+    if (!navigator.permissions?.query) return null;
+    try {
+      return await navigator.permissions.query({ name: "microphone" });
+    } catch {
+      return null;
+    }
+  }
+
+  async function syncMicrophonePermissionState() {
+    renderMicrophonePermissionStatus();
+    const permission = await queryMicrophonePermission();
+    if (!permission) return;
+    microphonePermissionWatcher = permission;
+    rememberMicrophonePermission(permission.state);
+    const handleChange = () => rememberMicrophonePermission(permission.state);
+    if (permission.addEventListener) permission.addEventListener("change", handleChange);
+    else permission.onchange = handleChange;
+  }
+
+  async function requestMicrophonePermission() {
+    const permission = await queryMicrophonePermission();
+    if (permission?.state === "granted") {
+      rememberMicrophonePermission("granted");
+      return true;
+    }
+    if (permission?.state === "denied") {
+      rememberMicrophonePermission("denied");
+      elements.pronunciationFeedback.textContent = "Microphone đang bị chặn. Hãy mở cài đặt trang và chọn Cho phép microphone.";
+      showToast("Hãy cho phép microphone trong cài đặt của trang", "!");
+      return false;
+    }
+
+    if (!permission && store.microphonePermission === "granted") return true;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      rememberMicrophonePermission("prompt");
+      return true;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((track) => track.stop());
+      rememberMicrophonePermission("granted");
+      return true;
+    } catch (error) {
+      const denied = error?.name === "NotAllowedError" || error?.name === "SecurityError";
+      rememberMicrophonePermission(denied ? "denied" : "prompt");
+      elements.pronunciationFeedback.textContent = denied
+        ? "Bạn chưa cho phép sử dụng microphone. Hãy cấp quyền rồi thử lại."
+        : "Không tìm thấy microphone đang hoạt động. Hãy kiểm tra thiết bị rồi thử lại.";
+      showToast(elements.pronunciationFeedback.textContent, "!");
+      return false;
+    }
+  }
+
+  function ensureMicrophonePermission() {
+    if (!microphonePermissionRequest) {
+      microphonePermissionRequest = requestMicrophonePermission()
+        .finally(() => { microphonePermissionRequest = null; });
+    }
+    return microphonePermissionRequest;
+  }
+
   function getPronunciationPool(source = elements.pronunciationSource.value) {
     if (source === "curated") return vocabulary.filter((item) => !item.extended);
     if (source === "saved") return store.saved.map((id) => vocabulary.find((item) => item.id === id)).filter(Boolean);
@@ -794,6 +884,7 @@
 
   function stopPronunciationRecognition() {
     clearTimeout(pronunciationStopTimer);
+    pronunciationInterimCandidate = null;
     const recognition = pronunciationRecognition;
     pronunciationRecognition = null;
     if (recognition) {
@@ -827,9 +918,17 @@
     markStudied(pronunciationCard().id);
   }
 
-  function startPronunciationRecognition() {
+  async function startPronunciationRecognition() {
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!Recognition || pronunciationListening) return;
+    const requestedCard = pronunciationCard();
+    elements.pronunciationRecordButton.disabled = true;
+    elements.pronunciationFeedback.textContent = "Đang kiểm tra quyền microphone...";
+    const microphoneAllowed = await ensureMicrophonePermission();
+    if (!microphoneAllowed || activeView !== "pronunciation" || elements.pronunciationSession.hidden || pronunciationCard() !== requestedCard) {
+      setPronunciationListening(false);
+      return;
+    }
     stopPronunciationRecognition();
     if ("speechSynthesis" in window) speechSynthesis.cancel();
     elements.pronunciationResult.hidden = true;
@@ -841,13 +940,16 @@
     const recognition = new Recognition();
     pronunciationRecognition = recognition;
     recognition.lang = "en-US";
-    recognition.interimResults = false;
+    recognition.interimResults = true;
     recognition.continuous = false;
     recognition.maxAlternatives = 5;
     let receivedResult = false;
+    let recognitionFailed = false;
+    pronunciationInterimCandidate = null;
 
     recognition.onstart = () => {
       if (pronunciationRecognition !== recognition) return;
+      rememberMicrophonePermission("granted");
       setPronunciationListening(true);
       elements.pronunciationFeedback.textContent = "Đang nghe — hãy phát âm, sau đó nhấn “Dừng và chấm điểm”.";
       clearTimeout(pronunciationStopTimer);
@@ -857,18 +959,28 @@
     };
     recognition.onresult = (event) => {
       if (pronunciationRecognition !== recognition) return;
-      receivedResult = true;
-      const alternatives = Array.from(event.results[0]);
-      const best = alternatives.map((alternative) => ({
-        transcript: alternative.transcript.trim(),
-        score: calculatePronunciationScore(pronunciationCard().word, alternative.transcript, alternative.confidence)
-      })).sort((left, right) => right.score - left.score)[0];
-      showPronunciationResult(best.transcript, best.score);
+      for (let resultIndex = event.resultIndex; resultIndex < event.results.length; resultIndex += 1) {
+        const result = event.results[resultIndex];
+        const best = Array.from(result).map((alternative) => ({
+          transcript: alternative.transcript.trim(),
+          score: calculatePronunciationScore(pronunciationCard().word, alternative.transcript, alternative.confidence)
+        })).sort((left, right) => right.score - left.score)[0];
+        if (!best?.transcript) continue;
+        pronunciationInterimCandidate = best;
+        elements.pronunciationTranscript.textContent = `Đang nghe được: “${best.transcript}”`;
+        if (result.isFinal && !receivedResult) {
+          receivedResult = true;
+          showPronunciationResult(best.transcript, best.score);
+        }
+      }
     };
     recognition.onerror = (event) => {
       if (pronunciationRecognition !== recognition || event.error === "aborted") return;
+      recognitionFailed = true;
+      if (event.error === "not-allowed") rememberMicrophonePermission("denied");
       const messages = {
         "not-allowed": "Bạn cần cho phép trình duyệt sử dụng microphone.",
+        "service-not-allowed": "Trình duyệt đang chặn dịch vụ nhận diện giọng nói.",
         "audio-capture": "Không tìm thấy microphone đang hoạt động.",
         "no-speech": "Chưa nghe thấy giọng nói. Hãy nhấn và thử lại.",
         network: "Dịch vụ nhận diện giọng nói đang mất kết nối."
@@ -881,7 +993,11 @@
       clearTimeout(pronunciationStopTimer);
       pronunciationRecognition = null;
       setPronunciationListening(false);
-      if (!receivedResult && (elements.pronunciationFeedback.textContent.includes("Đang nghe") || elements.pronunciationFeedback.textContent.includes("Đã dừng thu"))) {
+      if (!receivedResult && pronunciationInterimCandidate) {
+        const candidate = pronunciationInterimCandidate;
+        pronunciationInterimCandidate = null;
+        showPronunciationResult(candidate.transcript, candidate.score);
+      } else if (!receivedResult && !recognitionFailed) {
         elements.pronunciationFeedback.textContent = "Chưa nghe thấy giọng nói. Hãy nhấn và thử lại.";
       }
     };
@@ -905,6 +1021,20 @@
     elements.pronunciationFeedback.textContent = "Đã dừng thu — đang xử lý giọng nói...";
     try {
       pronunciationRecognition.stop();
+      pronunciationStopTimer = setTimeout(() => {
+        const recognition = pronunciationRecognition;
+        if (!recognition) return;
+        const candidate = pronunciationInterimCandidate;
+        pronunciationRecognition = null;
+        pronunciationInterimCandidate = null;
+        try { recognition.abort(); } catch { /* Recognition has already ended. */ }
+        setPronunciationListening(false);
+        if (!Number.isFinite(pronunciationScores[pronunciationIndex]) && candidate) {
+          showPronunciationResult(candidate.transcript, candidate.score);
+        } else if (!Number.isFinite(pronunciationScores[pronunciationIndex])) {
+          elements.pronunciationFeedback.textContent = "Chưa nhận được kết quả. Hãy nhấn và thử lại.";
+        }
+      }, 3000);
     } catch {
       stopPronunciationRecognition();
     }
@@ -1112,7 +1242,16 @@
       stopPronunciationRecognition();
       speakText(pronunciationCard().word.replace(/\.\.\./g, ""), "en-US", .62);
     });
-    elements.pronunciationRecordButton.addEventListener("click", togglePronunciationRecording);
+    elements.pronunciationRecordButton.addEventListener("pointerup", (event) => {
+      if (event.pointerType !== "touch" || !pronunciationListening) return;
+      event.preventDefault();
+      pronunciationIgnoreClickUntil = Date.now() + 600;
+      togglePronunciationRecording();
+    });
+    elements.pronunciationRecordButton.addEventListener("click", () => {
+      if (Date.now() < pronunciationIgnoreClickUntil) return;
+      togglePronunciationRecording();
+    });
     elements.retryPronunciationButton.addEventListener("click", retryPronunciation);
     elements.nextPronunciationButton.addEventListener("click", nextPronunciationQuestion);
     $("#pronunciationBackToSetupButton").addEventListener("click", showPronunciationSetup);
@@ -1181,6 +1320,7 @@
     renderSaved();
     updateExerciseSourceNote();
     updatePronunciationSourceNote();
+    syncMicrophonePermissionState();
     initializeEvents();
     saveStore();
     const requestedView = window.location.hash.slice(1);

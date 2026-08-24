@@ -333,6 +333,8 @@ kbd { min-width: 22px; padding: 3px 6px; border: 1px solid var(--line); border-b
 .pronunciation-settings { display: flex; flex-direction: column; justify-content: center; gap: 20px; padding: 42px; }
 .start-pronunciation { align-self: start; min-width: 175px; }
 .pronunciation-privacy { margin: -8px 0 0; color: var(--muted); font-size: 9px; }
+.pronunciation-privacy[data-state="granted"] { color: var(--green); font-weight: 700; }
+.pronunciation-privacy[data-state="denied"] { color: var(--red); font-weight: 700; }
 .pronunciation-session { max-width: 850px; margin: 0 auto; }
 .pronunciation-session[hidden], .pronunciation-setup[hidden], .pronunciation-complete[hidden] { display: none; }
 .pronunciation-statusbar { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin: 0 3px 15px; }
@@ -360,7 +362,7 @@ kbd { min-width: 22px; padding: 3px 6px; border: 1px solid var(--line); border-b
 .pronunciation-result > div:last-child > strong { font-size: 13px; }
 .pronunciation-result p { margin: 5px 0 0; color: var(--muted); font-size: 10px; overflow-wrap: anywhere; }
 .pronunciation-feedback { min-height: 17px; margin: 18px 0 12px; color: var(--muted); font-size: 10px; }
-.pronunciation-record { min-width: 210px; min-height: 56px; display: inline-flex; align-items: center; justify-content: center; gap: 11px; padding: 0 20px; border: 0; border-radius: 16px; color: white; background: #477863; cursor: pointer; box-shadow: 0 12px 28px rgba(49,93,76,.22); }
+.pronunciation-record { min-width: 210px; min-height: 56px; display: inline-flex; align-items: center; justify-content: center; gap: 11px; padding: 0 20px; border: 0; border-radius: 16px; color: white; background: #477863; cursor: pointer; touch-action: manipulation; user-select: none; box-shadow: 0 12px 28px rgba(49,93,76,.22); }
 .pronunciation-record > span { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; background: rgba(255,255,255,.14); }
 .pronunciation-record svg { width: 17px; }
 .pronunciation-record strong { font-size: 11px; }
