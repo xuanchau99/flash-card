@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f6f4ed">
+  <meta name="description" content="DailyLingo - Flashcard từ vựng tiếng Anh giao tiếp hằng ngày">
+  <title>DailyLingo — Học tiếng Anh mỗi ngày</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="#" aria-label="DailyLingo home">
+        <span class="brand-mark">D</span>
+        <span>Daily<span>Lingo</span></span>
+      </a>
+
+      <nav class="main-nav" aria-label="Điều hướng chính">
+        <button class="nav-item active" data-view="learn">
+          <svg aria-hidden="true"><use href="#icon-cards"></use></svg>
+          <span>Học flashcard</span>
+        </button>
+        <button class="nav-item" data-view="library">
+          <svg aria-hidden="true"><use href="#icon-library"></use></svg>
+          <span>Kho từ vựng</span>
+          <span class="nav-count" id="navTotal">0</span>
+        </button>
+        <button class="nav-item" data-view="exercise">
+          <svg aria-hidden="true"><use href="#icon-pen"></use></svg>
+          <span>Luyện viết từ</span>
+          <span class="nav-count" id="navWrong">0</span>
+        </button>
+        <button class="nav-item" data-view="saved">
+          <svg aria-hidden="true"><use href="#icon-bookmark"></use></svg>
+          <span>Đã lưu</span>
+          <span class="nav-count" id="navSaved">0</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-section">
+        <p class="section-label">Chủ đề</p>
+        <div id="sidebarCategories" class="category-nav"></div>
+      </div>
+
+      <div class="daily-card">
+        <div class="daily-card-head">
+          <div>
+            <span>Mục tiêu hôm nay</span>
+            <strong><span id="dailyDone">0</span>/<span id="dailyGoal">20</span> từ</strong>
+          </div>
+          <button class="icon-button small" id="editGoal" aria-label="Thay đổi mục tiêu">
+            <svg aria-hidden="true"><use href="#icon-edit"></use></svg>
+          </button>
+        </div>
+        <div class="progress-track"><span id="dailyProgress"></span></div>
+        <p id="goalMessage">Bắt đầu thật nhẹ nhàng nhé!</p>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <button class="icon-button mobile-menu" id="menuButton" aria-label="Mở menu">
+          <svg aria-hidden="true"><use href="#icon-menu"></use></svg>
+        </button>
+        <div class="search-wrap">
+          <svg aria-hidden="true"><use href="#icon-search"></use></svg>
+          <input id="globalSearch" type="search" placeholder="Tìm từ, nghĩa hoặc ví dụ..." autocomplete="off">
+          <kbd>⌘ K</kbd>
+        </div>
+        <div class="top-actions">
+          <div class="streak-pill" title="Chuỗi ngày học liên tiếp">
+            <span>🔥</span><strong id="streakCount">1</strong><span class="streak-label">ngày</span>
+          </div>
+          <button class="icon-button" id="themeToggle" aria-label="Đổi giao diện sáng tối">
+            <svg class="sun-icon" aria-hidden="true"><use href="#icon-sun"></use></svg>
+            <svg class="moon-icon" aria-hidden="true"><use href="#icon-moon"></use></svg>
+          </button>
+          <button class="avatar" aria-label="Hồ sơ người học">DL</button>
+        </div>
+      </header>
+
+      <section class="view active" id="learnView">
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">HỌC MỖI NGÀY, TIẾN BỘ MỖI NGÀY</p>
+            <h1>Ready to <em>speak up?</em></h1>
+            <p>Lật thẻ, nghe phát âm và chinh phục từng từ một.</p>
+          </div>
+          <div class="heading-actions">
+            <button class="button secondary" id="shuffleButton">
+              <svg aria-hidden="true"><use href="#icon-shuffle"></use></svg> Xáo bài
+            </button>
+            <button class="button secondary" id="resetSessionButton">
+              <svg aria-hidden="true"><use href="#icon-refresh"></use></svg> Học lại
+            </button>
+          </div>
+        </div>
+
+        <div class="study-layout">
+          <section class="study-panel">
+            <div class="study-toolbar">
+              <div class="select-wrap">
+                <span class="select-emoji" id="activeCategoryEmoji">💬</span>
+                <select id="categorySelect" aria-label="Chọn chủ đề"></select>
+                <svg aria-hidden="true"><use href="#icon-chevron"></use></svg>
+              </div>
+              <div class="session-progress">
+                <span><strong id="currentNumber">1</strong> / <span id="deckTotal">0</span></span>
+                <div class="mini-progress"><span id="deckProgress"></span></div>
+              </div>
+            </div>
+
+            <div class="flashcard-scene" id="flashcardScene" tabindex="0" aria-label="Flashcard, nhấn để lật">
+              <article class="flashcard" id="flashcard">
+                <div class="card-face card-front">
+                  <div class="card-topline">
+                    <span class="level-tag" id="cardLevel">A1 · CƠ BẢN</span>
+                    <button class="card-icon-button bookmark-button" id="bookmarkButton" aria-label="Lưu từ này">
+                      <svg aria-hidden="true"><use href="#icon-bookmark"></use></svg>
+                    </button>
+                  </div>
+                  <div class="word-block">
+                    <p class="card-category" id="cardCategory">Giao tiếp cơ bản</p>
+                    <h2 id="cardWord">Hello</h2>
+                    <div class="pronunciation-row">
+                      <span id="cardIpa">/həˈləʊ/</span>
+                      <button class="sound-button" id="soundButton" aria-label="Nghe phát âm">
+                        <svg aria-hidden="true"><use href="#icon-volume"></use></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="flip-hint">
+                    <svg aria-hidden="true"><use href="#icon-flip"></use></svg>
+                    <span>Nhấn để xem nghĩa</span>
+                    <kbd>Space</kbd>
+                  </div>
+                </div>
+
+                <div class="card-face card-back">
+                  <div class="card-topline">
+                    <span class="level-tag dark" id="backLevel">A1 · CƠ BẢN</span>
+                    <button class="card-icon-button back-sound-button" id="backSoundButton" aria-label="Nghe phát âm">
+                      <svg aria-hidden="true"><use href="#icon-volume"></use></svg>
+                    </button>
+                  </div>
+                  <div class="meaning-block">
+                    <p class="back-word" id="backWord">Hello</p>
+                    <h2 id="cardMeaning">Xin chào</h2>
+                    <div class="example-box">
+                      <span>VÍ DỤ</span>
+                      <p id="cardExample">Hello! How are you today?</p>
+                      <div class="example-translation">
+                        <span>VI</span>
+                        <small id="cardExampleVi" aria-live="polite">Xin chào! Hôm nay bạn khỏe không?</small>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="flip-hint light">
+                    <svg aria-hidden="true"><use href="#icon-flip"></use></svg>
+                    <span>Nhấn để xem lại từ</span>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            <div class="answer-actions">
+              <button class="answer-button again" id="againButton">
+                <span class="answer-icon"><svg aria-hidden="true"><use href="#icon-again"></use></svg></span>
+                <span><strong>Chưa nhớ</strong><small>Phím 1</small></span>
+              </button>
+              <button class="answer-button hard" id="hardButton">
+                <span class="answer-icon"><svg aria-hidden="true"><use href="#icon-thinking"></use></svg></span>
+                <span><strong>Hơi khó</strong><small>Phím 2</small></span>
+              </button>
+              <button class="answer-button known" id="knownButton">
+                <span class="answer-icon"><svg aria-hidden="true"><use href="#icon-check"></use></svg></span>
+                <span><strong>Đã nhớ</strong><small>Phím 3</small></span>
+              </button>
+            </div>
+
+            <div class="card-navigation">
+              <button id="previousButton"><svg aria-hidden="true"><use href="#icon-arrow-left"></use></svg> Thẻ trước</button>
+              <span>Dùng phím <kbd>←</kbd> <kbd>→</kbd> để chuyển thẻ</span>
+              <button id="nextButton">Thẻ tiếp <svg aria-hidden="true"><use href="#icon-arrow-right"></use></svg></button>
+            </div>
+          </section>
+
+          <aside class="stats-column">
+            <div class="stat-card session-stat">
+              <div class="stat-card-heading">
+                <div>
+                  <span>Tiến độ buổi học</span>
+                  <strong id="sessionPercent">0%</strong>
+                </div>
+                <div class="radial-progress" id="radialProgress"><span>0%</span></div>
+              </div>
+              <div class="stat-divider"></div>
+              <div class="stat-grid">
+                <div><span class="dot green"></span><strong id="knownCount">0</strong><small>Đã nhớ</small></div>
+                <div><span class="dot yellow"></span><strong id="hardCount">0</strong><small>Hơi khó</small></div>
+                <div><span class="dot red"></span><strong id="againCount">0</strong><small>Học lại</small></div>
+              </div>
+            </div>
+
+            <div class="stat-card tip-card">
+              <div class="tip-icon">💡</div>
+              <div>
+                <strong>Mẹo ghi nhớ</strong>
+                <p id="studyTip">Đọc to từ mới và đặt một câu liên quan đến chính bạn.</p>
+              </div>
+            </div>
+
+            <div class="stat-card keyboard-card">
+              <strong>Phím tắt</strong>
+              <p><span>Lật thẻ</span><kbd>Space</kbd></p>
+              <p><span>Nghe phát âm</span><kbd>S</kbd></p>
+              <p><span>Lưu từ</span><kbd>B</kbd></p>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="view" id="exerciseView">
+        <div class="page-heading exercise-heading">
+          <div>
+            <p class="eyebrow">NHỚ CHỦ ĐỘNG, THUỘC LÂU HƠN</p>
+            <h1>Luyện viết từ vựng</h1>
+            <p>Nhìn nghĩa tiếng Việt và viết từ tiếng Anh tương ứng. Mỗi từ được chấm ngay lập tức.</p>
+          </div>
+          <button class="button secondary" id="exitExerciseButton" hidden>
+            <svg aria-hidden="true"><use href="#icon-close"></use></svg> Kết thúc lượt
+          </button>
+        </div>
+
+        <div class="exercise-setup" id="exerciseSetup">
+          <div class="setup-illustration" aria-hidden="true">
+            <span>V</span><strong>→</strong><span>En</span>
+          </div>
+          <div class="setup-content">
+            <span class="setup-label">THIẾT LẬP BÀI LUYỆN</span>
+            <h2>Hôm nay bạn muốn thử sức bao nhiêu từ?</h2>
+            <p>Bài luyện lấy ngẫu nhiên từ kho đã chọn và chấm điểm thang 10 sau khi hoàn thành.</p>
+
+            <div class="setup-group">
+              <label>Số lượng từ</label>
+              <div class="amount-options" id="exerciseAmounts">
+                <button data-amount="10" class="active">10</button>
+                <button data-amount="20">20</button>
+                <button data-amount="30">30</button>
+                <button data-amount="50">50</button>
+                <button data-amount="100">100</button>
+              </div>
+            </div>
+
+            <div class="setup-group">
+              <label for="exerciseSource">Chọn bộ từ</label>
+              <div class="exercise-select-wrap">
+                <svg aria-hidden="true"><use href="#icon-library"></use></svg>
+                <select id="exerciseSource">
+                  <option value="curated">375 từ giao tiếp thiết yếu</option>
+                  <option value="all">Toàn bộ kho hơn 10.000 từ</option>
+                  <option value="saved">Những từ đã lưu</option>
+                  <option value="wrong">Làm lại những từ đã sai</option>
+                </select>
+                <svg aria-hidden="true"><use href="#icon-chevron"></use></svg>
+              </div>
+              <small id="exerciseSourceNote">Bộ từ giao tiếp được tuyển chọn, có ví dụ và cấp độ.</small>
+            </div>
+
+            <button class="button primary start-exercise" id="startExerciseButton">
+              Bắt đầu luyện <svg aria-hidden="true"><use href="#icon-arrow-right"></use></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="exercise-session" id="exerciseSession" hidden>
+          <div class="exercise-statusbar">
+            <div class="exercise-counter">
+              <span>CÂU <strong id="exerciseCurrent">1</strong>/<span id="exerciseTotal">10</span></span>
+              <div class="exercise-progress-track"><span id="exerciseProgress"></span></div>
+            </div>
+            <div class="exercise-points">
+              <strong id="exerciseAnsweredCount">0</strong>
+              <span>đã trả lời</span>
+              <small id="exercisePointValue">1 điểm/câu</small>
+            </div>
+          </div>
+
+          <div class="writing-card" id="writingCard">
+            <div class="writing-card-top">
+              <span class="writing-category" id="writingCategory">💬 Giao tiếp cơ bản</span>
+              <button class="sound-meaning-button" id="exerciseMeaningSound" title="Đọc nghĩa tiếng Việt" aria-label="Đọc nghĩa tiếng Việt">
+                <svg aria-hidden="true"><use href="#icon-volume"></use></svg>
+              </button>
+            </div>
+
+            <div class="writing-prompt">
+              <span>VIẾT TỪ TIẾNG ANH CÓ NGHĨA</span>
+              <h2 id="exerciseMeaning">Xin chào</h2>
+              <p id="exerciseHint">Gồm 5 chữ cái</p>
+            </div>
+
+            <form class="answer-form" id="exerciseForm" autocomplete="off">
+              <div class="answer-input-wrap" id="answerInputWrap">
+                <input id="exerciseAnswer" type="text" placeholder="Nhập từ tiếng Anh..." autocapitalize="none" spellcheck="false" aria-label="Nhập đáp án tiếng Anh">
+              </div>
+              <button class="button primary check-answer" id="checkAnswerButton" type="submit">Lưu & tiếp tục</button>
+            </form>
+
+            <div class="exercise-card-actions">
+              <button id="skipExerciseButton">Không biết, bỏ qua câu này</button>
+            </div>
+          </div>
+
+          <p class="exercise-keyboard-tip">Nhấn <kbd>Enter</kbd> để lưu câu trả lời và chuyển sang từ tiếp theo</p>
+        </div>
+
+        <div class="exercise-complete" id="exerciseComplete" hidden>
+          <div class="complete-badge">🏆</div>
+          <p class="eyebrow">HOÀN THÀNH BÀI LUYỆN</p>
+          <h2 id="completeTitle">Làm tốt lắm!</h2>
+          <p id="completeMessage">Bạn vừa hoàn thành một lượt luyện viết.</p>
+          <div class="complete-score-grid">
+            <div class="total-score"><strong id="completeScore">0/10</strong><span>Điểm</span></div>
+            <div class="pass"><strong id="completePass">0</strong><span>Đúng</span></div>
+            <div class="fail"><strong id="completeFail">0</strong><span>Sai</span></div>
+          </div>
+          <div class="exercise-review" id="exerciseReview"></div>
+          <div class="complete-actions">
+            <button class="button secondary" id="backToSetupButton">Đổi thiết lập</button>
+            <button class="button primary" id="retryWrongButton">Làm lại từ sai</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="libraryView">
+        <div class="page-heading library-heading">
+          <div>
+            <p class="eyebrow">KHÁM PHÁ & MỞ RỘNG</p>
+            <h1>Kho từ vựng</h1>
+            <p>Hơn 12.000 từ và cụm từ Anh–Việt, kết hợp bộ giao tiếp tuyển chọn và từ điển mở rộng.</p>
+          </div>
+          <button class="button primary" id="studyFilteredButton">
+            <svg aria-hidden="true"><use href="#icon-cards"></use></svg> Học bộ từ này
+          </button>
+        </div>
+
+        <div class="library-controls">
+          <div class="filter-pills" id="categoryFilters"></div>
+          <div class="control-row">
+            <div class="library-search">
+              <svg aria-hidden="true"><use href="#icon-search"></use></svg>
+              <input type="search" id="librarySearch" placeholder="Tìm trong kho từ vựng...">
+            </div>
+            <select id="levelFilter" aria-label="Lọc theo cấp độ">
+              <option value="all">Tất cả cấp độ</option>
+              <option value="A1">A1 · Cơ bản</option>
+              <option value="A2">A2 · Sơ cấp</option>
+              <option value="B1">B1 · Trung cấp</option>
+              <option value="B2">B2 · Khá</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="library-meta">
+          <p>Tìm thấy <strong id="resultCount">0</strong> từ vựng</p>
+          <button id="clearFilters">Xóa bộ lọc</button>
+        </div>
+        <div class="vocabulary-grid" id="vocabularyGrid"></div>
+        <button class="load-more" id="loadMoreButton">Xem thêm từ vựng</button>
+        <p class="data-credit">Dữ liệu từ điển mở rộng: <a href="https://github.com/skypediacode/english-vietnamese-dictionary" target="_blank" rel="noopener">Skypedia English–Vietnamese Dictionary</a> · CC BY-SA 4.0</p>
+      </section>
+
+      <section class="view" id="savedView">
+        <div class="page-heading library-heading">
+          <div>
+            <p class="eyebrow">BỘ SƯU TẬP CỦA BẠN</p>
+            <h1>Từ đã lưu</h1>
+            <p>Ôn lại những từ bạn muốn ghi nhớ kỹ hơn.</p>
+          </div>
+          <button class="button primary" id="studySavedButton">
+            <svg aria-hidden="true"><use href="#icon-cards"></use></svg> Học từ đã lưu
+          </button>
+        </div>
+        <div class="vocabulary-grid" id="savedGrid"></div>
+        <div class="empty-state" id="savedEmpty">
+          <div>🔖</div>
+          <h2>Chưa có từ nào được lưu</h2>
+          <p>Nhấn biểu tượng dấu trang trên flashcard để lưu từ bạn thích.</p>
+          <button class="button primary" data-go-learn>Khám phá flashcard</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="mobile-overlay" id="mobileOverlay"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite">
+    <span id="toastIcon">✓</span><p id="toastMessage">Đã lưu từ vựng</p>
+  </div>
+
+  <dialog id="goalDialog">
+    <form method="dialog" class="dialog-card">
+      <button class="dialog-close" value="cancel" aria-label="Đóng">×</button>
+      <div class="dialog-icon">🎯</div>
+      <h2>Mục tiêu mỗi ngày</h2>
+      <p>Chọn số từ bạn muốn chinh phục mỗi ngày.</p>
+      <div class="goal-options">
+        <label><input type="radio" name="goal" value="10"><span>10<small>Nhẹ nhàng</small></span></label>
+        <label><input type="radio" name="goal" value="20"><span>20<small>Vừa sức</small></span></label>
+        <label><input type="radio" name="goal" value="30"><span>30<small>Thử thách</small></span></label>
+      </div>
+      <button class="button primary full" id="saveGoal" value="default">Lưu mục tiêu</button>
+    </form>
+  </dialog>
+
+  <svg class="svg-sprite" aria-hidden="true">
+    <symbol id="icon-cards" viewBox="0 0 24 24"><rect x="4" y="3" width="14" height="16" rx="3"/><path d="m8 7 6 0M8 11h4M8 19v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7"/></symbol>
+    <symbol id="icon-library" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M8 7h8M8 11h6M4 19.5V5.5"/></symbol>
+    <symbol id="icon-bookmark" viewBox="0 0 24 24"><path d="M6 4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18l-6-4-6 4z"/></symbol>
+    <symbol id="icon-edit" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4z"/></symbol>
+    <symbol id="icon-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
+    <symbol id="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"/></symbol>
+    <symbol id="icon-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></symbol>
+    <symbol id="icon-shuffle" viewBox="0 0 24 24"><path d="m16 3 4 4-4 4M4 7h4c5 0 5 10 10 10h2M16 13l4 4-4 4M4 17h4c1.5 0 2.6-.9 3.5-2"/></symbol>
+    <symbol id="icon-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></symbol>
+    <symbol id="icon-chevron" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></symbol>
+    <symbol id="icon-volume" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4zM15 9a4 4 0 0 1 0 6M18 6a8 8 0 0 1 0 12"/></symbol>
+    <symbol id="icon-flip" viewBox="0 0 24 24"><path d="M20 7h-9a4 4 0 0 0-4 4v1M4 17h9a4 4 0 0 0 4-4v-1M17 4l3 3-3 3M7 14l-3 3 3 3"/></symbol>
+    <symbol id="icon-again" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></symbol>
+    <symbol id="icon-thinking" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9h.01M15 9h.01M9 15c1.7-1 4.3-1 6 0"/></symbol>
+    <symbol id="icon-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="icon-pen" viewBox="0 0 24 24"><path d="m4 20 4.5-1 10.8-10.8a2.2 2.2 0 0 0-3.1-3.1L5.4 15.9zM14.8 6.5l3.1 3.1M4 20h16"/></symbol>
+    <symbol id="icon-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="icon-arrow-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="icon-arrow-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  </svg>
+
+  <script src="data.js"></script>
+  <script src="dictionary.js"></script>
+  <script src="dictionary-supplement.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
